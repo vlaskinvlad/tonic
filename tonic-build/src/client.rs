@@ -1,48 +1,47 @@
-use crate::generate_doc_comments;
+use crate::{generate_doc_comments, naive_snake_case};
 use proc_macro2::TokenStream;
 use prost_build::{Method, Service};
 use quote::{format_ident, quote};
 
 pub(crate) fn generate(service: &Service, proto: &str) -> TokenStream {
     let service_ident = quote::format_ident!("{}Client", service.name);
+    let client_mod = quote::format_ident!("{}_client", naive_snake_case(&service.name));
     let methods = generate_methods(service, proto);
 
     let connect = generate_connect(&service_ident);
     let service_doc = generate_doc_comments(&service.comments.leading);
 
     quote! {
-        #service_doc
-        pub struct #service_ident<T> {
-            inner: tonic::client::Grpc<T>,
-        }
+        /// Generated server implementations.
+        pub mod #client_mod {
+            #![allow(unused_variables, dead_code, missing_docs)]
+            use tonic::codegen::*;
 
-        #connect
-
-        impl<T> #service_ident<T>
-        where T: tonic::client::GrpcService<tonic::body::BoxBody>,
-              T::ResponseBody: Body + HttpBody + Send + 'static,
-              T::Error: Into<StdError>,
-              <T::ResponseBody as HttpBody>::Error: Into<StdError> + Send,
-        {
-            pub fn new(inner: T) -> Self {
-                let inner = tonic::client::Grpc::new(inner);
-                Self { inner }
+            #service_doc
+            pub struct #service_ident<T> {
+                inner: tonic::client::Grpc<T>,
             }
 
-            /// Check if the service is ready.
-            pub async fn ready(&mut self) -> Result<(), tonic::Status> {
-                self.inner.ready().await.map_err(|e| {
-                    tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
-                })
+            #connect
+
+            impl<T> #service_ident<T>
+            where T: tonic::client::GrpcService<tonic::body::BoxBody>,
+                  T::ResponseBody: Body + HttpBody + Send + 'static,
+                  T::Error: Into<StdError>,
+                  <T::ResponseBody as HttpBody>::Error: Into<StdError> + Send, {
+                pub fn new(inner: T) -> Self {
+                    let inner = tonic::client::Grpc::new(inner);
+                    Self { inner }
+                }
+
+                #methods
             }
 
-            #methods
-        }
-
-        impl<T: Clone> Clone for #service_ident<T> {
-            fn clone(&self) -> Self {
-                Self {
-                    inner: self.inner.clone(),
+            impl<T: Clone> Clone for #service_ident<T> {
+                fn clone(&self) -> Self {
+                    Self {
+                        inner: self.inner.clone(),
+                    }
                 }
             }
         }
@@ -104,7 +103,9 @@ fn generate_unary(method: &Method, proto: &str, path: String) -> TokenStream {
             &mut self,
             request: impl tonic::IntoRequest<#request>,
         ) -> Result<tonic::Response<#response>, tonic::Status> {
-           self.ready().await?;
+            self.inner.ready().await.map_err(|e| {
+                        tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
            let codec = tonic::codec::ProstCodec::default();
            let path = http::uri::PathAndQuery::from_static(#path);
            self.inner.unary(request.into_request(), path, codec).await
@@ -122,7 +123,9 @@ fn generate_server_streaming(method: &Method, proto: &str, path: String) -> Toke
             &mut self,
             request: impl tonic::IntoRequest<#request>,
         ) -> Result<tonic::Response<tonic::codec::Streaming<#response>>, tonic::Status> {
-           self.ready().await?;
+            self.inner.ready().await.map_err(|e| {
+                        tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
            let codec = tonic::codec::ProstCodec::default();
            let path = http::uri::PathAndQuery::from_static(#path);
            self.inner.server_streaming(request.into_request(), path, codec).await
@@ -140,10 +143,12 @@ fn generate_client_streaming(method: &Method, proto: &str, path: String) -> Toke
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = #request>
         ) -> Result<tonic::Response<#response>, tonic::Status> {
-           self.ready().await?;
-           let codec = tonic::codec::ProstCodec::default();
-           let path = http::uri::PathAndQuery::from_static(#path);
-           self.inner.client_streaming(request.into_streaming_request(), path, codec).await
+            self.inner.ready().await.map_err(|e| {
+                        tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(#path);
+            self.inner.client_streaming(request.into_streaming_request(), path, codec).await
         }
     }
 }
@@ -158,7 +163,9 @@ fn generate_streaming(method: &Method, proto: &str, path: String) -> TokenStream
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = #request>
         ) -> Result<tonic::Response<tonic::codec::Streaming<#response>>, tonic::Status> {
-           self.ready().await?;
+            self.inner.ready().await.map_err(|e| {
+                        tonic::Status::new(tonic::Code::Unknown, format!("Service was not ready: {}", e.into()))
+            })?;
            let codec = tonic::codec::ProstCodec::default();
            let path = http::uri::PathAndQuery::from_static(#path);
            self.inner.streaming(request.into_streaming_request(), path, codec).await

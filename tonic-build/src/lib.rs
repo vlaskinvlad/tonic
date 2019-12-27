@@ -53,7 +53,7 @@
 #![doc(
     html_logo_url = "https://github.com/hyperium/tonic/raw/master/.github/assets/tonic-docs.png"
 )]
-#![doc(html_root_url = "https://docs.rs/tonic-build/0.1.0-alpha.6")]
+#![doc(html_root_url = "https://docs.rs/tonic-build/0.1.0-beta.1")]
 #![doc(issue_tracker_base_url = "https://github.com/hyperium/tonic/issues/")]
 #![doc(test(no_crate_inject, attr(deny(rust_2018_idioms))))]
 
@@ -251,13 +251,7 @@ impl prost_build::ServiceGenerator for ServiceGenerator {
             let clients = &self.clients;
 
             let client_service = quote::quote! {
-                /// Generated client implementations.
-                pub mod client {
-                    #![allow(unused_variables, dead_code, missing_docs)]
-                    use tonic::codegen::*;
-
-                    #clients
-                }
+                #clients
             };
 
             let code = format!("{}", client_service);
@@ -270,13 +264,7 @@ impl prost_build::ServiceGenerator for ServiceGenerator {
             let servers = &self.servers;
 
             let server_service = quote::quote! {
-                /// Generated server implementations.
-                pub mod server {
-                    #![allow(unused_variables, dead_code, missing_docs)]
-                    use tonic::codegen::*;
-
-                    #servers
-                }
+                #servers
             };
 
             let code = format!("{}", server_service);
@@ -332,4 +320,32 @@ fn replace_wellknown(proto_path: &str, method: &Method) -> (TokenStream, TokenSt
     };
 
     (request, response)
+}
+
+fn naive_snake_case(name: &str) -> String {
+    let mut s = String::new();
+    let mut it = name.chars().peekable();
+
+    while let Some(x) = it.next() {
+        s.push(x.to_ascii_lowercase());
+        if let Some(y) = it.peek() {
+            if y.is_uppercase() {
+                s.push('_');
+            }
+        }
+    }
+
+    s
+}
+
+#[test]
+fn test_snake_case() {
+    for case in &[
+        ("Service", "service"),
+        ("ThatHasALongName", "that_has_a_long_name"),
+        ("greeter", "greeter"),
+        ("ABCServiceX", "a_b_c_service_x"),
+    ] {
+        assert_eq!(naive_snake_case(case.0), case.1)
+    }
 }

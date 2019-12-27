@@ -46,7 +46,6 @@ impl<T> Streaming<T> {
     pub(crate) fn new_response<B, D>(decoder: D, body: B, status_code: StatusCode) -> Self
     where
         B: Body + Send + Sync + 'static,
-        // B::Data: Into<Bytes>,
         B::Error: Into<crate::Error>,
         D: Decoder<Item = T, Error = Status> + Send + Sync + 'static,
     {
@@ -56,17 +55,16 @@ impl<T> Streaming<T> {
     pub(crate) fn new_empty<B, D>(decoder: D, body: B) -> Self
     where
         B: Body + Send + Sync + 'static,
-        // B::Data: Into<Bytes>,
         B::Error: Into<crate::Error>,
         D: Decoder<Item = T, Error = Status> + Send + Sync + 'static,
     {
         Self::new(decoder, body, Direction::EmptyResponse)
     }
 
-    pub(crate) fn new_request<B, D>(decoder: D, body: B) -> Self
+    #[doc(hidden)]
+    pub fn new_request<B, D>(decoder: D, body: B) -> Self
     where
         B: Body + Send + Sync + 'static,
-        // B::Data: Into<Bytes>,
         B::Error: Into<crate::Error>,
         D: Decoder<Item = T, Error = Status> + Send + Sync + 'static,
     {
@@ -76,7 +74,6 @@ impl<T> Streaming<T> {
     fn new<B, D>(decoder: D, body: B, direction: Direction) -> Self
     where
         B: Body + Send + Sync + 'static,
-        // B::Data: Into<Bytes>,
         B::Error: Into<crate::Error>,
         D: Decoder<Item = T, Error = Status> + Send + Sync + 'static,
     {
